@@ -2313,7 +2313,7 @@ var process1 = function (bytevec) {
             Params.rangeProfile_byteVecIdx = byteVecIdx;
         } else if (tlvtype == TLV_type.MMWDEMO_OUTPUT_MSG_NOISE_PROFILE) {
             var detected = processRangeNoiseProfile(bytevec, byteVecIdx, Params, false);
-            if (num_detected[0] + num_undetected[0] < max_count) {
+            if (num_detected[0] + num_undetected[0] <= max_count) {
                 // if (detected) {
                 //     num_detected++;
                 // } else { num_undetected++; }
@@ -2368,7 +2368,7 @@ var process1 = function (bytevec) {
     {
         start_tlv_ticks = getTimeDiff(0);
         var detected = processRangeNoiseProfile(bytevec, Params.rangeProfile_byteVecIdx, Params, true, detObjRes);
-        if (num_detected[0] + num_undetected[1] < max_count) {
+        if (num_detected[0] + num_undetected[0] <= max_count) {
             // if (detected) {
             //     num_detected++;
             // } else { num_undetected++; }
@@ -3007,6 +3007,10 @@ var processRangeNoiseProfile = function (bytevec, byteVecIdx, Params, isRangePro
             // } 
             var tag_ranges = [];
             
+            // peaks = [[],[]]
+            // peaks = [[a, b],[]]
+            
+            
             for (var i = 0; i < peaks.length; i++) {
                 if (peaks[i].length == 2) {
                     // console.log("peaks index: " + peaks[i][0].x + " " + peaks[i][1].x + "\n");
@@ -3021,8 +3025,9 @@ var processRangeNoiseProfile = function (bytevec, byteVecIdx, Params, isRangePro
                 } else {
                     num_undetected[i]++;
                 }
-            }                
-            if ((num_detected[0] + num_undetected[0] < max_count) && tag_ranges.length > 0)
+            }
+            if (peaks.length == 0) num_undetected[0]++;
+            if ((num_detected[0] + num_undetected[0] <= max_count) && tag_ranges.length > 0)
                 console.log("tag range: " + tag_ranges);
 
         } else {
@@ -3097,10 +3102,10 @@ function findPeaks(arr, rangePairs, stdDevs) {
         var peak;
         var foundPeak = false;
         var stats = getStats(arr.slice(indexMin, indexMax+1)); //
-        var threshold = stats.avg + stdDevs * stats.std;
+        var threshold = stats.avg + 6; //stdDevs * stats.std;
         // console.log('threshold: ' + threshold + '\n');
         for (var i = indexMin; i < indexMax; i++) {
-            if (arr[i] > threshold && arr[i-1] < arr[i] && arr[i] > arr[i+1]) {
+            if ((arr[i] > 75 || arr[i] > threshold) && ((arr[i-1] < arr[i] && arr[i] > arr[i+1]) || (arr[i-1] < arr[i] && arr[i] == arr[i+1]))) {
                 if (!foundPeak) {
                     foundPeak = true;
                     peak = {x: i, y: arr[i]};
