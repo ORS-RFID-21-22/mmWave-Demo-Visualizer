@@ -2873,17 +2873,6 @@ var processRangeNoiseProfile = function (bytevec, byteVecIdx, Params, isRangePro
 
     var subFrameNum = Params.currentSubFrameNumber;
     if (subFrameNum != Params.subFrameToPlot) return;
-    
-        //  var numBytes = Params.dataPath[subFrameNum].numTxAzimAnt *
-        //     Params.dataPath[subFrameNum].numRxAnt *
-        //     Params.dataPath[subFrameNum].numRangeBins * 4;
-            
-        // var q = bytevec.slice(byteVecIdx, byteVecIdx + numBytes);
-        // console.log("tx: " +   Params.dataPath[subFrameNum].numTxAzimAnt + "\n");
-        // console.log("rx: " +   Params.dataPath[subFrameNum].numRxAnt + "\n");
-        // console.log("range bins: " +  Params.dataPath[subFrameNum].numRangeBins + "\n");
-        // console.log("byteVecIdx: ", byteVecIdx, "\n");
-        // console.log(bytevec);
 
     if (isRangeProfile && Params.guiMonitor[subFrameNum].logMagRange != 1) return;
     if (isRangeProfile == false && Params.guiMonitor[subFrameNum].noiseProfile != 1) return;
@@ -2950,90 +2939,51 @@ var processRangeNoiseProfile = function (bytevec, byteVecIdx, Params, isRangePro
     
     // console.log(rp);
         
-    if (isRangeProfile == true && detObjRes) {
-        if (detObjRes.rangeIdx) {
+    if (isRangeProfile == true) {
+    // if (isRangeProfile == true && detObjRes) {
+        // if (detObjRes.rangeIdx) {
             var rp_det = []; //math.zeros(math.size(rp)).valueOf();
             var rp_det_x = [];
-            // var real_rp_det_x = [];
+            
+            var peaks = findPeaksSameWindow(
+                            rp, 
+                            2,
+                            [[133, 233], [285, 385]]
+                        );
 
-            // console.log(rp_x);
-            // console.log(real_rp_x);
-            
-            // math.forEach(detObjRes.rangeIdx, function (value, idx) {
-            //     // caution the content of x(1,:) is range index, is this indexing 1-based or 0-based in target code?
-            //     if (detObjRes.dopplerIdx[idx] == 0) {
-            //         //rp_det[value] = rp[value];
-            //         rp_det.push(rp[value]);
-            //         rp_det_x.push(rp_x[value]);
-            //     }
-            // });
-            // var peaks = findPeaks2(rp, 1.5);
-            // for (var i = 0; i < peaks.length; i++) {
-            //     rp_det.push(peaks[i].y);
-            //     rp_det_x.push(rp_x[peaks[i].x]); 
-            //     // real_rp_det_x.push(real_rp_x[peaks[i].x]); // real range
-            // }
-            
-            var peaks = findPeaks(
-                                    rp, 
-                                    [
-                                        [[152, 174], [361, 383]],
-                                        [[100, 120], [400, 420]]
-                                        // add any other window ranges in this array.
-                                    ], 
-                                    2
-                                );
-            for (var i = 0; i < peaks.length; i++) {
-                for (var j = 0; j < peaks[i].length; j++) {
-                    rp_det.push(peaks[i][j].y);
-                    rp_det_x.push(rp_x[peaks[i][j].x]);
-                }
+            // plot any detected peaks
+            for (var i = 0; i < peaks.detPeaksX.length; i++) {
+                // rp_det.push(peaks.detPeaks[i].y);
+                rp_det_x.push(rp_x[peaks.detPeaksX[i]]);
             }
+            rp_det = peaks.detPeaksY;
+
             
             templateObj.$.ti_widget_plot2.data[1].x = rp_det_x;
             templateObj.$.ti_widget_plot2.data[1].y = rp_det;
+
+            if (peaks.groupPeaks != null) {
+                peaks = peaks.groupPeaks;
+                var tag_ranges = [];
             
-            // if (peaks.length == 2) {
-            //     // console.log("peaks index: " + peaks[0].x + " " + peaks[1].x + "\n");
-            //     detected = true;
-            //     var det1 = rp_det_x[0];
-            //     var det2 = rp_det_x[1] - rp_x[512];
-            //     // console.log("Raw detected ranges: " + det1 + " and " + rp_det_x[1] + "\n");
-            //     // console.log("subtract " + rp_x[512] + "\n");
-            //     // console.log("Detected peaks at: " + det1 + " and " + det2 + "\n");
-            //     var tag_range = (det1 + det2) / 2;
-            //     if (num_detected + num_undetected < max_count)
-            //         console.log("tag range: " + tag_range + "\n");
-            // } 
-            var tag_ranges = [];
-            
-            // peaks = [[],[]]
-            // peaks = [[a, b],[]]
-            
-            
-            for (var i = 0; i < peaks.length; i++) {
-                if (peaks[i].length == 2) {
+                detected = true;
+                for (var i = 0; i < peaks.length; i++) {
                     // console.log("peaks index: " + peaks[i][0].x + " " + peaks[i][1].x + "\n");
-                    detected = true;
                     num_detected[i]++;
                     var det1 = rp_x[peaks[i][0].x];
                     var det2 = rp_x[peaks[i][1].x] - rp_x[512];
                     // console.log("Detected peaks at: " + det1 + " and " + det2 + "\n");
                     var tag_range = (det1 + det2) / 2;
                     if (num_detected[0] + num_undetected[0] < max_count)
-                       tag_ranges.push(tag_range);
-                } else {
-                    num_undetected[i]++;
+                    tag_ranges.push(tag_range);
                 }
+                if ((num_detected[0] + num_undetected[0] <= max_count) && tag_ranges.length > 0)
+                    console.log("tag range: " + tag_ranges);
+            } else {
+                num_undetected[0]++;
+                // templateObj.$.ti_widget_plot2.data[1].x = [];
+                // templateObj.$.ti_widget_plot2.data[1].y = [];
             }
-            if (peaks.length == 0) num_undetected[0]++;
-            if ((num_detected[0] + num_undetected[0] <= max_count) && tag_ranges.length > 0)
-                console.log("tag range: " + tag_ranges);
-
-        } else {
-            templateObj.$.ti_widget_plot2.data[1].x = [];
-            templateObj.$.ti_widget_plot2.data[1].y = [];
-        }
     }
     // console.log(rp);
     plotredraw(templateObj.$.ti_widget_plot2);
@@ -3043,151 +2993,142 @@ var processRangeNoiseProfile = function (bytevec, byteVecIdx, Params, isRangePro
 };
 
 
+// pairs up peaks symmetrically
+// arr = range profile
+// numTags = number of tags
+// rangePair = real/image band windows to search in as index ranges
+//      EX
+// [
+//     [152, 174], [361, 383]
+// ]
+function findPeaksSameWindow(arr, numTags, rangePair) {
+    var groupedPeaks = [];
 
-function findPeaks(arr, rangePairs, stdDevs) {
-    // var peaks = []
-    // var stats = stats(arr.slice(142, 382+1));
-    // var threshold = stats.avg + stdDevs * stats.std;
-    // for (var i = 142; i < 382; i++) {
-    //     if (arr[i] > threshold && arr[i-1] < arr[i] && arr[i] > arr[i+1]) {
-    //         if (peaks.length < numPeaks) {
-    //             peaks.push({x: i, y: arr[i]});
-    //         } else {
-    //             var min = peaks[0].y;
-    //             var j = 1;
-    //             for (; j < peaks.length; j++) {
-    //                 if (peaks[j].y < min) min = peaks[j].y;
-    //                 break;
-    //             }
-    //             if (arr[i] > min) {
-    //                 peaks[j].x = i;
-    //                 peaks[j].y = arr[i];
-    //             }
-    //         }
-    //     }
-    // }
-    // return peaks.sort(function(a, b) {
-    //     return a.y < b.y;
-    // });
+    var imPeaks = findPeaksInRange(arr, numTags, rangePair[0][0], rangePair[0][1]);
+    var rePeaks = findPeaksInRange(arr, numTags, rangePair[1][0], rangePair[1][1]);
     
-    // // calculate mean and std
-    // function stats(arr){
-    //     var avg = arr.reduce((a, b) => a + b) / arr.length;
-        
-    //     var squareDiffs = arr.map(function(a){
-    //       var diff = a - avg;
-    //       var sqrDiff = diff * diff;
-    //       return sqrDiff;
-    //     });
-        
-    //     var avgSquareDiff = squareDiffs.reduce((a, b) => a + b) / arr.length;
-      
-    //     var stdDev = Math.sqrt(avgSquareDiff);
-    //     return {'avg': avg, 'std': stdDev};
-    //   }
-    peaks = [];
-    for (var i = 0; i < rangePairs.length; i++) {
-        var peaksPair = [];
-        var result = findSinglePeak(arr, rangePairs[i][0][0], rangePairs[i][0][1], stdDevs);
-        if (result.found) peaksPair.push(result.peak);
-        var result = findSinglePeak(arr, rangePairs[i][1][0], rangePairs[i][1][1], stdDevs);
-        if (result.found) peaksPair.push(result.peak);
-        peaks.push(peaksPair);
+    var detectedPeaksX = [];
+    var detectedPeaksY = [];
+    for (var i = 0; i < imPeaks.length; i++) {
+        detectedPeaksX.push(imPeaks[i].x);
+        detectedPeaksY.push(imPeaks[i].y);
     }
-    return peaks;
+    for (var i = 0; i < rePeaks.length; i++) {
+        detectedPeaksX.push(rePeaks[i].x);
+        detectedPeaksY.push(rePeaks[i].y);
+    }
+    
+    if (rePeaks.length < numTags || imPeaks.length < numTags) {
+        return {groupPeaks: null, detPeaksX: detectedPeaksX, detPeaksY: detectedPeaksY};
+    }
+    
+    
+    // for (var i = 0; i < numTags; i++) {
+    //     groupedPeaks.push([imPeaks[i], rePeaks[numTags-i-1]]);
+    // }
+    
+    // currently hard coded for 2!
+    var im1;
+    var im2;
+    var re1;
+    var re2;
+
+    if (imPeaks[0].x < imPeaks[1].x) {
+        im1 = imPeaks[0];
+        im2 = imPeaks[1];
+    } else {
+        im2 = imPeaks[0];
+        im1 = imPeaks[1];
+    }
+    
+    if (rePeaks[0].x < rePeaks[1].x) {
+        re2 = rePeaks[0];
+        re1 = rePeaks[1];
+    } else {
+        re1 = rePeaks[0];
+        re2 = rePeaks[1];
+    }
+    
+    groupedPeaks = [[im1, re1], [im2, re2]];
+    return {groupPeaks: groupedPeaks, detPeaksX: detectedPeaksX, detPeaksY: detectedPeaksY};
      
 
-    
-    function findSinglePeak(arr, indexMin, indexMax, stdDevs) {
-        var peak;
-        var foundPeak = false;
-        var stats = getStats(arr.slice(indexMin, indexMax+1)); //
-        var threshold = stats.avg + 6; //stdDevs * stats.std;
-        // console.log('threshold: ' + threshold + '\n');
-        for (var i = indexMin; i < indexMax; i++) {
-            if ((arr[i] > 75 || arr[i] > threshold) && ((arr[i-1] < arr[i] && arr[i] > arr[i+1]) || (arr[i-1] < arr[i] && arr[i] == arr[i+1]))) {
-                if (!foundPeak) {
-                    foundPeak = true;
-                    peak = {x: i, y: arr[i]};
+    // find tallest numPeaks peaks above threshold
+    function findPeaksInRange(arr, numPeaks, indexMin, indexMax) {
+        var peaks = []
+        var peaks_x = {};
+        var subarray = arr.slice(indexMin, indexMax + 1);
+
+        var avg = subarray.reduce((a, b) => a + b) / subarray.length;
+        var threshold = avg + 6;
+        
+        // find top 5 peaks
+        for (var i = indexMin; i <= indexMax; i++) {
+            if (arr[i] > threshold && ((arr[i-1] < arr[i] && arr[i] > arr[i+1]) || (arr[i-1] < arr[i] && arr[i] == arr[i+1]))) {
+                if (peaks.length < 5) {
+                    peaks.push(arr[i]);
+                    peaks_x[peaks.length-1] = i;
                 } else {
-                    if (arr[i] > peak.y) {
-                        peak.x = i;
-                        peak.y = arr[i];
+                    if (arr[i] > Math.min(peaks)) {
+                        var index = peaks.indexOf(Math.min(peaks));
+                        peaks[index] = arr[i];
+                        peaks_x[index] = i;
                     }
                 }
             }
-        } 
-        return {'found': foundPeak, 'peak': peak};
-    }
-    
-    function getStats(arr){
-        var avg = arr.reduce((a, b) => a + b) / arr.length;
+        }
         
-        var squareDiffs = arr.map(function(a){
-          var diff = a - avg;
-          var sqrDiff = diff * diff;
-          return sqrDiff;
+        if (peaks.length == 0) return [];
+        
+        var sortedPeaks = peaks.slice();
+        sortedPeaks.sort(function(a, b) {
+          return b - a;
         });
-        
-        var avgSquareDiff = squareDiffs.reduce((a, b) => a + b) / arr.length;
-      
-        var stdDev = Math.sqrt(avgSquareDiff);
-        return {'avg': avg, 'std': stdDev};
-    };
 
-}
-
-function findPeaks2(arr, stdDevs) {
-    var peaks = []
-    var stats = stats(arr);
-    var threshold = stats.avg + stdDevs * stats.std;
-    var index2 = 0;
-    for (var i = 152; i < 174; i++) {
-        if (arr[i] > threshold && arr[i-1] < arr[i] && arr[i] > arr[i+1]) {
-            if (peaks.length < 1) {
-                peaks.push({x: i, y: arr[i]});
-                index2 = 1;
-            } else {
-                if (arr[i] > peaks[0].y) {
-                    peaks[0].x = i;
-                    peaks[0].y = arr[i];
+        var max_x = peaks_x[peaks.indexOf(sortedPeaks[0])];
+        var validPeaks = [{x: max_x, y: sortedPeaks[0]}];
+        for (var i = 1; i < sortedPeaks.length; i++) {
+            if (Math.abs(peaks_x[peaks.indexOf(sortedPeaks[i])] - max_x) > 8) {
+                max_x = peaks_x[peaks.indexOf(sortedPeaks[i])];
+                validPeaks.push({x: max_x, y: sortedPeaks[i]})
+                if (validPeaks.length == numPeaks) {
+                    break;
                 }
+                
             }
         }
+        return validPeaks;
     }
-    
-    for (var i = 361; i < 383; i++) {
-        if (arr[i] > threshold && arr[i-1] < arr[i] && arr[i] > arr[i+1]) {
-            if ((index2 == 1 && peaks.length < 2) || (index2 == 0 && peaks.length < 1)) {
-                peaks.push({x: i, y: arr[i]});
-            } else {
-                if (arr[i] > peaks[index2].y) {
-                    peaks[index2].x = i;
-                    peaks[index2].y = arr[i];
-                }
-            }
-        }
-    }
-    
-    return peaks.sort(function(a, b) {
-        return a.y < b.y;
-    });
-    
-    // calculate mean and std
-    function stats(arr){
-        var avg = arr.reduce((a, b) => a + b) / arr.length;
-        
-        var squareDiffs = arr.map(function(a){
-          var diff = a - avg;
-          var sqrDiff = diff * diff;
-          return sqrDiff;
-        });
-        
-        var avgSquareDiff = squareDiffs.reduce((a, b) => a + b) / arr.length;
-      
-        var stdDev = Math.sqrt(avgSquareDiff);
-        return {'avg': avg, 'std': stdDev};
-      }
+    // function findPeaksInRange(arr, numPeaks, indexMin, indexMax) {
+    //     var peaks = []
+    //     var subarray = arr.slice(indexMin, indexMax + 1);
+
+    //     var avg = subarray.reduce((a, b) => a + b) / subarray.length;
+    //     var threshold = avg + 6;
+    //     for (var i = indexMin; i <= indexMax; i++) {
+    //         if (arr[i] > threshold && arr[i-1] < arr[i] && arr[i] > arr[i+1]) {
+    //             if (peaks.length < numPeaks) {
+    //                 peaks.push({x: i, y: arr[i]});
+    //             } else {
+    //                 var min = peaks[0].y;
+    //                 var j = 1;
+    //                 var jmin = 0;
+    //                 for (; j < peaks.length; j++) {
+    //                     if (peaks[j].y < min) {
+    //                         min = peaks[j].y;
+    //                         jmin = j;
+    //                     }
+    //                 }
+    //                 if (arr[i] > min) {
+    //                     peaks[jmin].x = i;
+    //                     peaks[jmin].y = arr[i];
+    //                 }
+    //             }
+    //         }
+    //     }
+    //     return peaks;
+    // }
+
 }
 
 var processAzimuthHeatMap = function (bytevec, byteVecIdx, Params) {
